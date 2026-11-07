@@ -794,6 +794,178 @@ display(artifact_examples.limit(50))
 
 # COMMAND ----------
 # MAGIC %md
+# MAGIC ## 14. Apply deterministic cleaning rules
+# MAGIC
+# MAGIC The cleaning implementation lives in `src/car_manual_rag/cleaning.py` so
+# MAGIC it can be unit tested and reused outside this notebook. Databricks Git
+# MAGIC folders add the repository root to Python's import path; this cell locates
+# MAGIC the project's `src` directory without assuming a serverless working
+# MAGIC directory.
+# MAGIC
+# MAGIC Every raw element remains represented in the cleaned table. Content roles
+# MAGIC and `retrieval_eligible` determine downstream behavior without deleting
+# MAGIC provenance.
+
+# COMMAND ----------
+
+import sys
+from pathlib import Path
+
+repository_roots = [
+    Path(path)
+    for path in sys.path
+    if path and (Path(path) / "pyproject.toml").exists()
+]
+
+assert repository_roots, (
+    "Could not locate the Git folder root on sys.path. "
+    "Confirm that this notebook is running from the project Git folder."
+)
+
+source_directory = repository_roots[0] / "src"
+if str(source_directory) not in sys.path:
+    sys.path.insert(0, str(source_directory))
+
+from car_manual_rag.cleaning import (  # noqa: E402
+    CLEANING_VERSION,
+    classify_content_role,
+    clean_extracted_text,
+    is_text_retrieval_eligible,
+)
+
+assert clean_extracted_text("sele-\ncionar") == "selecionar"
+assert clean_extracted_text("MENU/\nVeículo") == "MENU/Veículo"
+assert clean_extracted_text("Vista&#x20;Zoom") == "Vista Zoom"
+
+print(f"Loaded deterministic cleaning rules: {CLEANING_VERSION}")
+
+# COMMAND ----------
+
+CLEAN_ELEMENT_TABLE = "document_elements_clean"
+FULL_CLEAN_ELEMENT_TABLE_NAME = (
+    f"{CATALOG}.{SCHEMA}.{CLEAN_ELEMENT_TABLE}"
+)
+
+clean_text_udf = F.udf(clean_extracted_text, "string")
+content_role_udf = F.udf(classify_content_role, "string")
+retrieval_eligible_udf = F.udf(is_text_retrieval_eligible, "boolean")
+
+document_elements_clean = (
+    raw_elements
+    .withColumn("cleaned_content", clean_text_udf("content"))
+    .withColumn("content_role", content_role_udf("element_type"))
+    .withColumn(
+        "retrieval_eligible",
+        retrieval_eligible_udf("element_type", "cleaned_content"),
+    )
+    .withColumn("cleaning_version", F.lit(CLEANING_VERSION))
+    .withColumn("cleaned_at", F.current_timestamp())
+)
+
+(
+    document_elements_clean.write
+    .format("delta")
+    .mode("overwrite")
+    .option("overwriteSchema", "true")
+    .saveAsTable(FULL_CLEAN_ELEMENT_TABLE_NAME)
+)
+
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ## 15. Validate cleaned elements
+# MAGIC
+# MAGIC The clean table must preserve row count, eliminate the measured text
+# MAGIC artifacts, and never mark empty content as retrieval eligible.
+
+# COMMAND ----------
+
+clean_elements = spark.table(FULL_CLEAN_ELEMENT_TABLE_NAME)
+
+raw_element_count = raw_elements.count()
+clean_element_count = clean_elements.count()
+eligible_element_count = clean_elements.filter("retrieval_eligible").count()
+
+remaining_hyphenation = clean_elements.filter(
+    F.col("cleaned_content").rlike(r"-\s*\n\s*\p{L}")
+).count()
+remaining_html_entities = clean_elements.filter(
+    F.col("cleaned_content").rlike(
+        r"&#x[0-9A-Fa-f]+;|&#[0-9]+;|&[A-Za-z]+;"
+    )
+).count()
+empty_eligible_elements = clean_elements.filter(
+    F.col("retrieval_eligible")
+    & (
+        F.col("cleaned_content").isNull()
+        | (F.trim("cleaned_content") == "")
+    )
+).count()
+
+assert clean_element_count == raw_element_count, (
+    "Cleaning must not add or remove raw parser elements."
+)
+assert remaining_hyphenation == 0, "Hyphenated line breaks remain after cleaning."
+assert remaining_html_entities == 0, "HTML entities remain after cleaning."
+assert empty_eligible_elements == 0, (
+    "Empty content must never be eligible for text retrieval."
+)
+
+cleaning_validation = spark.createDataFrame(
+    [
+        ("raw_element_count", raw_element_count, "PASS"),
+        ("clean_element_count", clean_element_count, "PASS"),
+        ("retrieval_eligible_count", eligible_element_count, "PASS"),
+        ("remaining_hyphenation", remaining_hyphenation, "PASS"),
+        ("remaining_html_entities", remaining_html_entities, "PASS"),
+        ("empty_eligible_elements", empty_eligible_elements, "PASS"),
+    ],
+    ["check", "observed_value", "status"],
+)
+
+display(cleaning_validation)
+
+# COMMAND ----------
+
+display(
+    clean_elements
+    .groupBy("document_id", "content_role", "retrieval_eligible")
+    .count()
+    .orderBy("document_id", "content_role", "retrieval_eligible")
+)
+
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ## 16. Compare raw and cleaned artifact examples
+# MAGIC
+# MAGIC Review every changed hyphenation or HTML-entity example before accepting
+# MAGIC the cleaning version. A deterministic transformation can still encode a
+# MAGIC bad assumption, especially for legitimate Portuguese compound words.
+
+# COMMAND ----------
+
+changed_examples = (
+    clean_elements.alias("clean")
+    .join(
+        artifact_examples.select("document_id", "element_id").alias("artifact"),
+        on=["document_id", "element_id"],
+        how="inner",
+    )
+    .select(
+        "document_id",
+        "element_id",
+        "element_type",
+        "pdf_page_numbers",
+        F.col("content").alias("raw_content"),
+        "cleaned_content",
+        "retrieval_eligible",
+    )
+    .orderBy("document_id", "element_id")
+)
+
+display(changed_examples)
+
+# COMMAND ----------
+# MAGIC %md
 # MAGIC ## How we will choose
 # MAGIC
 # MAGIC - **PyPDF2 baseline:** inexpensive and transparent; suitable when embedded
