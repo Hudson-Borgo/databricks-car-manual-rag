@@ -28,6 +28,7 @@ import statistics
 from collections import Counter
 
 from PyPDF2 import PdfReader
+from pyspark.sql import functions as F
 
 CATALOG = "workspace"
 SCHEMA = "car_manual_rag"
@@ -401,16 +402,293 @@ display(
 
 # COMMAND ----------
 # MAGIC %md
+# MAGIC ## 7. Parser decision
+# MAGIC
+# MAGIC The representative-page comparison supports the following decision:
+# MAGIC
+# MAGIC - Use Databricks `ai_parse_document` version 2.0 as the primary parser.
+# MAGIC - Disable figure descriptions during the initial text-retrieval pipeline.
+# MAGIC - Preserve the raw `VARIANT` output before applying cleaning rules.
+# MAGIC - Keep PyPDF2 as a low-cost diagnostic and fallback parser.
+# MAGIC
+# MAGIC The managed parser recovered useful structure that PyPDF2 flattened,
+# MAGIC including section headers, page headers, page footers, page numbers, and
+# MAGIC figures. It also improved spacing and reading order in the Peugeot sample.
+# MAGIC Hyundai line-break hyphenation remains and will be handled explicitly in
+# MAGIC the cleaning stage.
+
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ## 8. Incrementally parse the complete manuals
+# MAGIC
+# MAGIC Both manuals are below the managed parser's 500-page limit. We compare file
+# MAGIC size and modification timestamp with the existing parse table, so an
+# MAGIC unchanged PDF is not parsed again when this notebook is rerun.
+# MAGIC
+# MAGIC Figure descriptions remain disabled to control cost. The unmodified parser
+# MAGIC output is stored as `VARIANT` in a managed Delta table.
+
+# COMMAND ----------
+
+PARSE_TABLE = "document_parses"
+ELEMENT_TABLE = "document_elements_raw"
+PARSE_STAGING_TABLE = "_document_parse_updates_staging"
+
+FULL_PARSE_TABLE_NAME = f"{CATALOG}.{SCHEMA}.{PARSE_TABLE}"
+FULL_ELEMENT_TABLE_NAME = f"{CATALOG}.{SCHEMA}.{ELEMENT_TABLE}"
+FULL_PARSE_STAGING_TABLE_NAME = (
+    f"{CATALOG}.{SCHEMA}.{PARSE_STAGING_TABLE}"
+)
+
+spark.sql(
+    f"""
+    CREATE TABLE IF NOT EXISTS `{CATALOG}`.`{SCHEMA}`.`{PARSE_TABLE}` (
+      document_id STRING,
+      file_path STRING,
+      file_size BIGINT,
+      file_modification_time TIMESTAMP,
+      parser_name STRING,
+      parser_version STRING,
+      parsed_document VARIANT,
+      parsed_at TIMESTAMP
+    )
+    USING DELTA
+    COMMENT 'Raw ai_parse_document output for governed car manual PDFs'
+    """
+)
+
+parse_inputs = (
+    binary_files
+    .withColumn(
+        "file_path",
+        F.regexp_replace(F.col("path"), r"^(dbfs:|file:)", ""),
+    )
+    .select(
+        "file_path",
+        F.col("length").alias("file_size"),
+        F.col("modificationTime").alias("file_modification_time"),
+        "content",
+    )
+    .join(
+        source_documents.select("document_id", "file_path"),
+        on="file_path",
+        how="inner",
+    )
+)
+
+existing_parses = spark.table(FULL_PARSE_TABLE_NAME).select(
+    "document_id",
+    "file_size",
+    "file_modification_time",
+)
+
+parse_candidates = (
+    parse_inputs.alias("source")
+    .join(
+        existing_parses.alias("target"),
+        on=(
+            (F.col("source.document_id") == F.col("target.document_id"))
+            & (F.col("source.file_size") == F.col("target.file_size"))
+            & (
+                F.col("source.file_modification_time")
+                == F.col("target.file_modification_time")
+            )
+        ),
+        how="left_anti",
+    )
+    .select("source.*")
+)
+
+parse_candidate_count = parse_candidates.count()
+print(f"Documents requiring full parsing: {parse_candidate_count}")
+
+# COMMAND ----------
+
+if parse_candidate_count > 0:
+    if managed_parser_execution_status != "PASS":
+        raise RuntimeError(
+            "The representative managed-parser test did not pass. "
+            "Do not start the full parse until that issue is resolved."
+        )
+
+    parse_candidates.createOrReplaceTempView("document_parse_candidates")
+
+    parsed_updates = spark.sql(
+        """
+        SELECT
+          document_id,
+          file_path,
+          file_size,
+          file_modification_time,
+          'ai_parse_document' AS parser_name,
+          '2.0' AS parser_version,
+          ai_parse_document(
+            content,
+            map(
+              'version', '2.0',
+              'descriptionElementTypes', ''
+            )
+          ) AS parsed_document,
+          current_timestamp() AS parsed_at
+        FROM document_parse_candidates
+        """
+    )
+
+    # Materialize model-backed output once before MERGE. This avoids repeating an
+    # expensive parser call if the merge plan evaluates its source more than once.
+    (
+        parsed_updates.write
+        .format("delta")
+        .mode("overwrite")
+        .option("overwriteSchema", "true")
+        .saveAsTable(FULL_PARSE_STAGING_TABLE_NAME)
+    )
+
+    spark.sql(
+        f"""
+        MERGE INTO `{CATALOG}`.`{SCHEMA}`.`{PARSE_TABLE}` AS target
+        USING `{CATALOG}`.`{SCHEMA}`.`{PARSE_STAGING_TABLE}` AS source
+          ON target.document_id = source.document_id
+        WHEN MATCHED THEN UPDATE SET *
+        WHEN NOT MATCHED THEN INSERT *
+        """
+    )
+
+    spark.sql(
+        f"DROP TABLE IF EXISTS "
+        f"`{CATALOG}`.`{SCHEMA}`.`{PARSE_STAGING_TABLE}`"
+    )
+else:
+    print("SKIPPED: Both PDFs already have current managed-parser results.")
+
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ## 9. Validate raw parse results
+# MAGIC
+# MAGIC We retain the complete parser response for reproducibility. The summary
+# MAGIC below extracts only operational fields from the `VARIANT` value.
+
+# COMMAND ----------
+
+parse_results = spark.table(FULL_PARSE_TABLE_NAME)
+
+parse_validation = parse_results.select(
+    "document_id",
+    "parser_name",
+    "parser_version",
+    F.size(
+        F.variant_get(
+            "parsed_document",
+            "$.document.pages",
+            "array<variant>",
+        )
+    ).alias("parsed_page_count"),
+    F.size(
+        F.variant_get(
+            "parsed_document",
+            "$.document.elements",
+            "array<variant>",
+        )
+    ).alias("element_count"),
+    F.size(
+        F.variant_get(
+            "parsed_document",
+            "$.error_status",
+            "array<variant>",
+        )
+    ).alias("error_count"),
+    "parsed_at",
+)
+
+display(parse_validation.orderBy("document_id"))
+
+assert parse_validation.count() == 2, "Expected two persisted parse results."
+assert parse_validation.filter("error_count > 0").count() == 0, (
+    "One or more documents contain managed-parser page errors."
+)
+
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ## 10. Flatten raw document elements
+# MAGIC
+# MAGIC The raw parser result remains the source of truth. This derived Delta table
+# MAGIC makes individual elements queryable for cleaning, exploratory analysis,
+# MAGIC and future chunk construction.
+# MAGIC
+# MAGIC `pdf_page_numbers` are one-based physical PDF positions derived from
+# MAGIC bounding boxes. Printed page labels such as `138` remain separate
+# MAGIC `page_number` elements and must not be confused with physical PDF pages.
+
+# COMMAND ----------
+
+element_variants = parse_results.select(
+    "document_id",
+    "file_path",
+    F.explode(
+        F.variant_get(
+            "parsed_document",
+            "$.document.elements",
+            "array<variant>",
+        )
+    ).alias("element"),
+)
+
+bbox_variants = F.variant_get(
+    "element",
+    "$.bbox",
+    "array<variant>",
+)
+
+page_ids = F.array_sort(
+    F.array_distinct(
+        F.transform(
+            bbox_variants,
+            lambda bbox: F.variant_get(bbox, "$.page_id", "int"),
+        )
+    )
+)
+
+document_elements_raw = element_variants.select(
+    "document_id",
+    "file_path",
+    F.variant_get("element", "$.id", "int").alias("element_id"),
+    F.variant_get("element", "$.type", "string").alias("element_type"),
+    F.variant_get("element", "$.content", "string").alias("content"),
+    F.variant_get("element", "$.confidence", "double").alias("confidence"),
+    page_ids.alias("page_ids"),
+    F.transform(page_ids, lambda page_id: page_id + F.lit(1)).alias(
+        "pdf_page_numbers"
+    ),
+)
+
+(
+    document_elements_raw.write
+    .format("delta")
+    .mode("overwrite")
+    .option("overwriteSchema", "true")
+    .saveAsTable(FULL_ELEMENT_TABLE_NAME)
+)
+
+display(
+    spark.table(FULL_ELEMENT_TABLE_NAME)
+    .groupBy("document_id", "element_type")
+    .count()
+    .orderBy("document_id", "element_type")
+)
+
+# COMMAND ----------
+# MAGIC %md
 # MAGIC ## How we will choose
 # MAGIC
 # MAGIC - **PyPDF2 baseline:** inexpensive and transparent; suitable when embedded
 # MAGIC   text and reading order are good.
-# MAGIC - **Databricks `ai_parse_document`:** managed parsing that can retain
-# MAGIC   document structure; availability and cost must be validated.
+# MAGIC - **Databricks `ai_parse_document`:** selected primary parser because the
+# MAGIC   experiment retained useful document structure and improved reading order.
 # MAGIC - **OCR:** required when important pages contain images of text without a
 # MAGIC   usable text layer.
 # MAGIC
-# MAGIC We will not persist extracted pages until we inspect these results.
+# MAGIC Raw managed-parser results and flattened elements are now persisted. Text
+# MAGIC cleaning and chunk construction remain separate, testable stages.
 
 # COMMAND ----------
 # MAGIC %md
