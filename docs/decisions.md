@@ -11,3 +11,4 @@ exists, not only how to run it.
 | ADR-004 | Proposed | Use a Delta-backed AI Search index. | Direct Vector Access is not supported in Free Edition; verify the exact supported configuration in the workspace before implementation. |
 | ADR-005 | Accepted | Store source manuals in the managed volume `workspace.car_manual_rag.manuals`. | The PDFs are non-tabular source data, and the project does not require direct access from systems outside Databricks. |
 | ADR-006 | Accepted | Use Hyundai HB20 2022 and Peugeot 208 2023 manuals as the initial corpus. | Multiple vehicles let us practice metadata filtering and prevent cross-vehicle evidence leakage. |
+| ADR-007 | Proposed | Compare a PyPDF2 embedded-text baseline with Databricks `ai_parse_document` before selecting the production parser. | Extraction quality depends on text layers, layout, tables, and images; the `.pdf` extension alone is insufficient evidence. |
