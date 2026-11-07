@@ -1,0 +1,19 @@
+# Local Python artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.env
+
+# IDE and operating system files
+.DS_Store
+.idea/
+.vscode/
+
+# Source documents stay outside Git for licensing and size reasons
+data/raw/
+data/**/*.pdf
+
+# Local experiment and test outputs
+artifacts/
+mlruns/
