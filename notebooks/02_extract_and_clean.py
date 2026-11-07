@@ -23,7 +23,9 @@
 # COMMAND ----------
 
 import io
+import json
 import statistics
+from collections import Counter
 
 from PyPDF2 import PdfReader
 
@@ -256,6 +258,146 @@ except Exception as exc:
     print(f"Managed parser capability check failed: {type(exc).__name__}: {exc}")
 
 print(f"ai_parse_document visible: {managed_parser_visible}")
+
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ## 6. Run a controlled managed-parser comparison
+# MAGIC
+# MAGIC To limit cost and latency, this experiment parses only the same first,
+# MAGIC middle, and final pages inspected in the PyPDF2 baseline. Figure
+# MAGIC descriptions are disabled because they are not needed for this text and
+# MAGIC layout comparison.
+# MAGIC
+# MAGIC `pageRange` uses one-based page numbers, matching our citation convention.
+
+# COMMAND ----------
+
+MANAGED_PARSER_SAMPLES = {
+    "hyundai_hb20_2022_pt_br": "1,247,494",
+    "peugeot_208_2023_pt_br": "1,142,284",
+}
+
+managed_summary_rows = []
+managed_element_rows = []
+managed_parser_execution_status = "NOT_RUN"
+
+if managed_parser_visible:
+    try:
+        for document in source_documents.collect():
+            page_range = MANAGED_PARSER_SAMPLES[document.document_id]
+            escaped_path = document.file_path.replace("'", "''")
+
+            parsed_row = spark.sql(
+                f"""
+                SELECT
+                  path,
+                  CAST(
+                    ai_parse_document(
+                      content,
+                      map(
+                        'version', '2.0',
+                        'descriptionElementTypes', '',
+                        'pageRange', '{page_range}'
+                      )
+                    ) AS STRING
+                  ) AS parsed_json
+                FROM read_files(
+                  '{escaped_path}',
+                  format => 'binaryFile'
+                )
+                """
+            ).first()
+
+            parsed_payload = json.loads(parsed_row.parsed_json)
+            elements = parsed_payload.get("document", {}).get("elements", [])
+            errors = parsed_payload.get("error_status", []) or []
+            element_types = Counter(
+                element.get("type", "unknown")
+                for element in elements
+            )
+
+            managed_summary_rows.append(
+                (
+                    document.document_id,
+                    page_range,
+                    len(elements),
+                    len(errors),
+                    json.dumps(dict(sorted(element_types.items()))),
+                )
+            )
+
+            for element in elements:
+                page_numbers = sorted(
+                    {
+                        bbox.get("page_id") + 1
+                        for bbox in (element.get("bbox") or [])
+                        if bbox.get("page_id") is not None
+                    }
+                )
+
+                managed_element_rows.append(
+                    (
+                        document.document_id,
+                        page_range,
+                        element.get("id"),
+                        ",".join(str(page) for page in page_numbers),
+                        element.get("type"),
+                        element.get("confidence"),
+                        (element.get("content") or "")[:2000],
+                    )
+                )
+
+        managed_parser_execution_status = "PASS"
+    except Exception as exc:
+        managed_parser_execution_status = "UNAVAILABLE_OR_FAILED"
+        print(
+            "Managed parser execution failed without affecting the PyPDF2 "
+            f"baseline: {type(exc).__name__}: {exc}"
+        )
+else:
+    managed_parser_execution_status = "NOT_VISIBLE"
+
+print(f"Managed parser execution status: {managed_parser_execution_status}")
+
+# COMMAND ----------
+
+managed_summary_df = spark.createDataFrame(
+    managed_summary_rows,
+    """
+    document_id STRING,
+    page_range STRING,
+    element_count INT,
+    error_count INT,
+    element_type_counts STRING
+    """,
+)
+
+display(managed_summary_df.orderBy("document_id"))
+
+# COMMAND ----------
+
+managed_elements_df = spark.createDataFrame(
+    managed_element_rows,
+    """
+    document_id STRING,
+    requested_page_range STRING,
+    element_id INT,
+    page_numbers STRING,
+    element_type STRING,
+    confidence DOUBLE,
+    content_preview STRING
+    """,
+)
+
+display(
+    managed_elements_df
+    .filter(
+        "element_type IN ('title', 'section_header', 'text', 'table', "
+        "'page_header', 'page_footer', 'page_number')"
+    )
+    .orderBy("document_id", "element_id")
+    .limit(100)
+)
 
 # COMMAND ----------
 # MAGIC %md
