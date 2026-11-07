@@ -8,9 +8,33 @@ import unicodedata
 
 CLEANING_VERSION = "v1"
 
-_LINE_BREAK_HYPHENATION = re.compile(r"(?<=\w)-\s*\n\s*(?=\w)")
+_DOUBLE_HYPHEN_LINE_BREAK = re.compile(r"(?<=\w)-\s*\n\s*-(?=\w)")
+_LINE_BREAK_HYPHENATION = re.compile(
+    r"(?<=\w)-\s*\n\s*(?P<fragment>\w+)"
+)
 _SLASH_LINE_BREAK = re.compile(r"(?<=/)\s*\n\s*(?=\w)")
 _WHITESPACE = re.compile(r"\s+")
+
+_PORTUGUESE_CLITICS = {
+    "a",
+    "as",
+    "la",
+    "las",
+    "lhe",
+    "lhes",
+    "lo",
+    "los",
+    "me",
+    "na",
+    "nas",
+    "no",
+    "nos",
+    "o",
+    "os",
+    "se",
+    "te",
+    "vos",
+}
 
 _CONTENT_ROLES = {
     "page_header": "page_furniture",
@@ -42,11 +66,20 @@ def clean_extracted_text(value: str | None) -> str | None:
     cleaned = html.unescape(value)
     cleaned = unicodedata.normalize("NFKC", cleaned)
     cleaned = cleaned.replace("\u00ad", "").replace("\u200b", "")
-    cleaned = _LINE_BREAK_HYPHENATION.sub("", cleaned)
+    cleaned = _DOUBLE_HYPHEN_LINE_BREAK.sub("-", cleaned)
+    cleaned = _LINE_BREAK_HYPHENATION.sub(_repair_line_break_hyphen, cleaned)
     cleaned = _SLASH_LINE_BREAK.sub("", cleaned)
     cleaned = _WHITESPACE.sub(" ", cleaned).strip()
 
     return cleaned or None
+
+
+def _repair_line_break_hyphen(match: re.Match[str]) -> str:
+    """Remove layout hyphens while preserving Portuguese clitic hyphens."""
+    fragment = match.group("fragment")
+    if fragment.lower() in _PORTUGUESE_CLITICS:
+        return f"-{fragment}"
+    return fragment
 
 
 def classify_content_role(element_type: str | None) -> str:

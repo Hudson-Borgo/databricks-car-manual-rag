@@ -32,6 +32,22 @@ class CleanExtractedTextTests(unittest.TestCase):
             "assistência 24-horas",
         )
 
+    def test_preserves_portuguese_clitic_hyphen(self):
+        self.assertEqual(
+            clean_extracted_text("certifique-\nse antes de dirigir"),
+            "certifique-se antes de dirigir",
+        )
+        self.assertEqual(
+            clean_extracted_text("enxergá-\nlos durante a noite"),
+            "enxergá-los durante a noite",
+        )
+
+    def test_repairs_duplicate_hyphen_across_line_break(self):
+        self.assertEqual(
+            clean_extracted_text("libere-\n-o imediatamente"),
+            "libere-o imediatamente",
+        )
+
     def test_repairs_slash_line_break(self):
         self.assertEqual(
             clean_extracted_text("MENU/\nVeículo/\nAjuda"),
