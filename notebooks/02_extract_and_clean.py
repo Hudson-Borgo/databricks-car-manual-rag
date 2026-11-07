@@ -590,12 +590,15 @@ parse_validation = parse_results.select(
             "array<variant>",
         )
     ).alias("element_count"),
-    F.size(
-        F.variant_get(
-            "parsed_document",
-            "$.error_status",
-            "array<variant>",
-        )
+    F.coalesce(
+        F.size(
+            F.variant_get(
+                "parsed_document",
+                "$.error_status",
+                "array<variant>",
+            )
+        ),
+        F.lit(0),
     ).alias("error_count"),
     "parsed_at",
 )
@@ -675,6 +678,119 @@ display(
     .count()
     .orderBy("document_id", "element_type")
 )
+
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ## 11. Audit cleaning requirements across the corpus
+# MAGIC
+# MAGIC Cleaning must be evidence-driven. The audit below measures missing text,
+# MAGIC line-break hyphenation, HTML entities, and element length across the full
+# MAGIC corpus. Null figure content is expected because figure descriptions were
+# MAGIC disabled; null text or section headings require investigation.
+
+# COMMAND ----------
+
+raw_elements = spark.table(FULL_ELEMENT_TABLE_NAME)
+
+empty_content = F.col("content").isNull() | (F.trim(F.col("content")) == "")
+line_break_hyphenation = F.col("content").rlike(
+    r"-\s*\n\s*\p{L}"
+)
+html_entity = F.col("content").rlike(
+    r"&#x[0-9A-Fa-f]+;|&#[0-9]+;|&[A-Za-z]+;"
+)
+
+cleaning_audit = (
+    raw_elements
+    .groupBy("document_id", "element_type")
+    .agg(
+        F.count("*").alias("element_count"),
+        F.sum(F.when(empty_content, 1).otherwise(0)).alias(
+            "empty_content_count"
+        ),
+        F.sum(F.when(line_break_hyphenation, 1).otherwise(0)).alias(
+            "hyphenated_line_break_count"
+        ),
+        F.sum(F.when(html_entity, 1).otherwise(0)).alias(
+            "html_entity_count"
+        ),
+        F.round(F.avg(F.length("content")), 1).alias(
+            "average_character_count"
+        ),
+        F.expr("percentile_approx(length(content), 0.5)").alias(
+            "median_character_count"
+        ),
+        F.max(F.length("content")).alias("maximum_character_count"),
+    )
+    .orderBy("document_id", "element_type")
+)
+
+display(cleaning_audit)
+
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ## 12. Find repeated page furniture
+# MAGIC
+# MAGIC Page headers, footers, and printed page numbers are valuable citation
+# MAGIC metadata but usually poor semantic-search content. Repeated normalized text
+# MAGIC is surfaced here for review; nothing is deleted from the raw table.
+
+# COMMAND ----------
+
+page_furniture_types = ["page_header", "page_footer", "page_number"]
+
+repeated_page_furniture = (
+    raw_elements
+    .filter(F.col("element_type").isin(page_furniture_types))
+    .filter(~empty_content)
+    .withColumn(
+        "normalized_content",
+        F.lower(
+            F.trim(
+                F.regexp_replace(F.col("content"), r"\s+", " ")
+            )
+        ),
+    )
+    .groupBy("document_id", "element_type", "normalized_content")
+    .agg(
+        F.count("*").alias("occurrences"),
+        F.array_sort(
+            F.array_distinct(F.flatten(F.collect_list("pdf_page_numbers")))
+        ).alias("pdf_page_numbers"),
+    )
+    .filter(F.col("occurrences") > 1)
+    .orderBy(
+        "document_id",
+        F.desc("occurrences"),
+        "element_type",
+    )
+)
+
+display(repeated_page_furniture)
+
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ## 13. Inspect elements containing known artifacts
+# MAGIC
+# MAGIC These examples will become test fixtures for deterministic cleaning. We
+# MAGIC will compare raw and cleaned values before writing a cleaned Delta table.
+
+# COMMAND ----------
+
+artifact_examples = (
+    raw_elements
+    .filter(line_break_hyphenation | html_entity)
+    .select(
+        "document_id",
+        "element_id",
+        "element_type",
+        "pdf_page_numbers",
+        "content",
+    )
+    .orderBy("document_id", "element_id")
+)
+
+display(artifact_examples.limit(50))
 
 # COMMAND ----------
 # MAGIC %md
