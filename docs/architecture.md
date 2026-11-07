@@ -15,7 +15,7 @@ PDF extraction and cleaning
 Delta tables: pages -> cleaned text -> chunks
         |
         v
-Mosaic AI Vector Search / AI Search index
+Databricks AI Search Delta Sync index
         |
         v
 Retriever -> grounded prompt -> foundation model
@@ -36,9 +36,17 @@ Catalog: workspace
 Schema:  car_manual_rag
 ```
 
-Exact volume, table, index, model, and endpoint names will be decided when the
-corresponding component is implemented. Keeping those decisions explicit helps
-us understand object ownership and avoid hidden setup code.
+Current retrieval objects:
+
+```text
+Chunk source: workspace.car_manual_rag.document_chunks
+Endpoint:     car_manual_rag_endpoint
+Index:        workspace.car_manual_rag.car_manual_chunks_index
+```
+
+The index uses Databricks-managed embeddings, hybrid retrieval, and triggered
+Delta synchronization. Keeping these decisions explicit helps us understand
+object ownership and avoid hidden setup code.
 
 ## Free Edition design constraint
 

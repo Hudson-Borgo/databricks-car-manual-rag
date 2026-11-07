@@ -26,7 +26,7 @@ The implementation will use current Databricks concepts and names:
 - **Unity Catalog** for governed data objects.
 - A **Unity Catalog volume** for the source PDFs.
 - **Delta tables** for extracted pages, cleaned text, and chunks.
-- **Mosaic AI Vector Search / AI Search** for semantic retrieval.
+- **Databricks AI Search** (formerly Vector Search) for hybrid retrieval.
 - A hosted embedding model and foundation model available in the workspace.
 - **MLflow** for tracing, evaluation, and lifecycle management.
 - **Model Serving** for deployment when supported by the Free Edition workspace.
