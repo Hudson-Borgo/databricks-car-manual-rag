@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 # MAGIC %md
 # MAGIC # 04 — Create a Delta Sync AI Search index
 # MAGIC
@@ -36,6 +40,7 @@ print(f"Planned endpoint: {AI_SEARCH_ENDPOINT}")
 print(f"Planned index: {FULL_AI_SEARCH_INDEX_NAME}")
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 1. Validate the index source
 # MAGIC
@@ -102,6 +107,7 @@ source_validation = spark.createDataFrame(
 display(source_validation)
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 2. Enable Delta Change Data Feed
 # MAGIC
@@ -146,6 +152,7 @@ display(
 )
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 3. Create the Standard AI Search endpoint
 # MAGIC
@@ -161,6 +168,7 @@ display(
 # MAGIC itself contain the chunk records.
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 4. Create the Delta Sync index
 # MAGIC
@@ -194,6 +202,7 @@ display(
 # MAGIC data ingest status to become ready.
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Why this configuration?
 # MAGIC
@@ -208,6 +217,7 @@ display(
 # MAGIC   and return page citations with each result.
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Knowledge check
 # MAGIC

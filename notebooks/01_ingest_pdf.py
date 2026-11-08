@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 # MAGIC %md
 # MAGIC # 01 — Governed PDF ingestion
 # MAGIC
@@ -53,6 +57,7 @@ print(f"Volume file path:      {VOLUME_PATH}")
 print(f"Source manifest table: {FULL_SOURCE_TABLE_NAME}")
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 1. Confirm the project namespace
 # MAGIC
@@ -73,6 +78,7 @@ assert matching_schemas.count() == 1, (
 print(f"Confirmed schema: {FULL_SCHEMA_NAME}")
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 2. Create a managed volume
 # MAGIC
@@ -96,6 +102,7 @@ print(f"Created or confirmed managed volume: {FULL_VOLUME_NAME}")
 display(spark.sql(f"DESCRIBE VOLUME `{CATALOG}`.`{SCHEMA}`.`{VOLUME}`"))
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 3. Upload the selected owner's manuals
 # MAGIC
@@ -113,6 +120,7 @@ display(spark.sql(f"DESCRIBE VOLUME `{CATALOG}`.`{SCHEMA}`.`{VOLUME}`"))
 # MAGIC provenance.
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 4. Inventory files in the volume
 # MAGIC
@@ -146,6 +154,7 @@ else:
     )
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 5. Validate the ingestion checkpoint
 # MAGIC
@@ -185,6 +194,7 @@ validation_result = spark.createDataFrame(
 display(validation_result)
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 6. Register the source-document manifest
 # MAGIC
@@ -273,6 +283,7 @@ else:
     print("SKIPPED: Resolve the PDF validation result before registering metadata.")
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Knowledge check
 # MAGIC
@@ -289,4 +300,4 @@ else:
 # MAGIC D. AI Search can only read PDFs directly and cannot index Delta tables.
 # MAGIC
 # MAGIC Record your answer before starting PDF extraction.
-
+# MAGIC

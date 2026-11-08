@@ -18,6 +18,7 @@
 # MAGIC **Exam alignment:** Data Preparation and Application Development.
 
 # COMMAND ----------
+
 # MAGIC %pip install PyPDF2==3.0.1
 
 # COMMAND ----------
@@ -42,6 +43,7 @@ print(f"Source manifest: {FULL_SOURCE_TABLE_NAME}")
 print(f"PDF volume:      {VOLUME_PATH}")
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 1. Confirm governed inputs
 # MAGIC
@@ -58,6 +60,7 @@ assert source_documents.count() == 2, (
 )
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 2. Read PDFs as binary files
 # MAGIC
@@ -81,6 +84,7 @@ assert binary_files.count() == 2, (
 )
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 3. Profile embedded-text extraction with PyPDF2
 # MAGIC
@@ -216,6 +220,7 @@ profile_df = spark.createDataFrame(profile_rows, profile_columns)
 display(profile_df.orderBy("manufacturer", "model"))
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 4. Inspect representative pages
 # MAGIC
@@ -239,6 +244,7 @@ samples_df = spark.createDataFrame(sample_rows, sample_columns)
 display(samples_df.orderBy("manufacturer", "model", "page_number"))
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 5. Check the managed parser candidate
 # MAGIC
@@ -261,6 +267,7 @@ except Exception as exc:
 print(f"ai_parse_document visible: {managed_parser_visible}")
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 6. Run a controlled managed-parser comparison
 # MAGIC
@@ -401,6 +408,7 @@ display(
 )
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 7. Parser decision
 # MAGIC
@@ -418,6 +426,7 @@ display(
 # MAGIC the cleaning stage.
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 8. Incrementally parse the complete manuals
 # MAGIC
@@ -562,6 +571,7 @@ else:
     print("SKIPPED: Both PDFs already have current managed-parser results.")
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 9. Validate raw parse results
 # MAGIC
@@ -611,6 +621,7 @@ assert parse_validation.filter("error_count > 0").count() == 0, (
 )
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 10. Flatten raw document elements
 # MAGIC
@@ -680,6 +691,7 @@ display(
 )
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 11. Audit cleaning requirements across the corpus
 # MAGIC
@@ -728,6 +740,7 @@ cleaning_audit = (
 display(cleaning_audit)
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 12. Find repeated page furniture
 # MAGIC
@@ -769,6 +782,7 @@ repeated_page_furniture = (
 display(repeated_page_furniture)
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 13. Inspect elements containing known artifacts
 # MAGIC
@@ -793,6 +807,7 @@ artifact_examples = (
 display(artifact_examples.limit(50))
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 14. Apply deterministic cleaning rules
 # MAGIC
@@ -871,6 +886,7 @@ document_elements_clean = (
 )
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 15. Validate cleaned elements
 # MAGIC
@@ -934,6 +950,7 @@ display(
 )
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 16. Compare raw and cleaned artifact examples
 # MAGIC
@@ -965,6 +982,7 @@ changed_examples = (
 display(changed_examples)
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## How we will choose
 # MAGIC
@@ -979,6 +997,7 @@ display(changed_examples)
 # MAGIC cleaning and chunk construction remain separate, testable stages.
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Knowledge check
 # MAGIC
@@ -994,4 +1013,4 @@ display(changed_examples)
 # MAGIC D. Use a larger embedding dimension.
 # MAGIC
 # MAGIC Record your answer together with your quality observations.
-
+# MAGIC

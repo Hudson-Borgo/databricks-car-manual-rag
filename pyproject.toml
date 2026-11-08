@@ -11,5 +11,10 @@ requires-python = ">=3.10"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+<<<<<<< Updated upstream
 [tool.setuptools.packages.find]
 where = ["src"]
+=======
+[tool.databricks.environment]
+environment_version = '6'
+>>>>>>> Stashed changes

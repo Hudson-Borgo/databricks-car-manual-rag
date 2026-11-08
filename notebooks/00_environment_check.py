@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 # MAGIC %md
 # MAGIC # 00 — Environment and Unity Catalog check
 # MAGIC
@@ -25,6 +29,7 @@ FULL_SCHEMA_NAME = f"{CATALOG}.{SCHEMA}"
 print(f"Project namespace: {FULL_SCHEMA_NAME}")
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 1. Inspect the current session
 # MAGIC
@@ -47,6 +52,7 @@ display(session_context)
 print(f"Spark version: {spark.version}")
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 2. Inspect available catalogs
 # MAGIC
@@ -59,6 +65,7 @@ print(f"Spark version: {spark.version}")
 display(spark.sql("SHOW CATALOGS"))
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 3. Create or confirm the project schema
 # MAGIC
@@ -84,6 +91,7 @@ print(f"Using Unity Catalog schema: {FULL_SCHEMA_NAME}")
 display(spark.sql(f"DESCRIBE SCHEMA EXTENDED `{CATALOG}`.`{SCHEMA}`"))
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 4. Validate the namespace
 # MAGIC
@@ -116,6 +124,7 @@ validation_result = spark.createDataFrame(
 display(validation_result)
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Unity Catalog naming model
 # MAGIC
@@ -137,6 +146,7 @@ display(validation_result)
 # MAGIC ```
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Knowledge check
 # MAGIC

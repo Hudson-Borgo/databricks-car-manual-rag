@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 # MAGIC %md
 # MAGIC # 03 — Section-aware document chunking
 # MAGIC
@@ -36,6 +40,7 @@ FULL_CLEAN_ELEMENT_TABLE_NAME = f"{CATALOG}.{SCHEMA}.{CLEAN_ELEMENT_TABLE}"
 FULL_CHUNK_TABLE_NAME = f"{CATALOG}.{SCHEMA}.{CHUNK_TABLE}"
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 1. Import the tested chunking module
 
@@ -61,6 +66,7 @@ from car_manual_rag.chunking import (  # noqa: E402
 print(f"Loaded chunking strategy: {CHUNKING_STRATEGY}")
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 2. Load governed inputs
 # MAGIC
@@ -91,6 +97,7 @@ display(
 )
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 3. Compare two chunk-size configurations
 # MAGIC
@@ -185,6 +192,7 @@ chunk_comparison = spark.createDataFrame(
 display(chunk_comparison.orderBy("max_characters"))
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 4. Persist the 1,600-character baseline
 # MAGIC
@@ -258,6 +266,7 @@ document_chunks = (
 )
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 5. Validate retrieval-ready chunks
 
@@ -312,6 +321,7 @@ display(
 )
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## 6. Inspect chunks related to temperature warnings
 
@@ -333,6 +343,7 @@ display(
 )
 
 # COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Knowledge check
 # MAGIC
