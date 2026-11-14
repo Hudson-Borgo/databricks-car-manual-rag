@@ -48,6 +48,11 @@ The index uses Databricks-managed embeddings, hybrid retrieval, and triggered
 Delta synchronization. Keeping these decisions explicit helps us understand
 object ownership and avoid hidden setup code.
 
+The baseline application filters retrieval by `document_id`, augments a
+grounded prompt with vehicle and PDF-page provenance, queries the
+`databricks-qwen3-next-80b-a3b-instruct` Foundation Model API endpoint, and
+captures retrieval and generation traces in MLflow.
+
 ## Free Edition design constraint
 
 The design must be validated against the current Free Edition documentation at

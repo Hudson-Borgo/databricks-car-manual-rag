@@ -8,10 +8,9 @@ format. Planned sequence:
 3. `02_extract_and_clean.py`
 4. `03_chunk_documents.py`
 5. `04_create_vector_index.py`
-6. `05_test_retrieval.py`
-7. `06_build_rag_chain.py`
-8. `07_evaluate_rag.py`
-9. `08_deploy_and_monitor.py`
+6. `05_build_rag_chain.py` (includes retrieval testing)
+7. `06_evaluate_rag.py`
+8. `07_deploy_and_monitor.py`
 
 Each notebook must state its learning objective, expected inputs, expected
 outputs, validation checks, and related exam objectives.
