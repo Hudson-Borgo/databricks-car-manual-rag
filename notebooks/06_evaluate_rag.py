@@ -28,7 +28,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install -U mlflow
+# MAGIC %pip install -U "mlflow[databricks]>=3.10"
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
@@ -64,6 +64,7 @@ latest_traces = mlflow.search_traces(
     ),
     order_by=["attributes.timestamp_ms DESC"],
     max_results=EXPECTED_TRACE_COUNT,
+    return_type="list",
 )
 
 assert len(latest_traces) == EXPECTED_TRACE_COUNT, (
@@ -71,7 +72,12 @@ assert len(latest_traces) == EXPECTED_TRACE_COUNT, (
     "and rerun Notebook 05 before continuing."
 )
 
-display(latest_traces)
+for trace in latest_traces:
+    print(
+        f"Trace ID: {trace.info.trace_id} | "
+        f"status: {trace.info.status} | "
+        f"request: {trace.data.request}"
+    )
 
 # COMMAND ----------
 # MAGIC %md
@@ -85,7 +91,7 @@ display(latest_traces)
 
 trace_schema_rows = []
 
-for trace in latest_traces["trace"]:
+for trace in latest_traces:
     retriever_spans = trace.search_spans(span_type="RETRIEVER")
     retriever_document_count = sum(
         len(span.outputs or [])

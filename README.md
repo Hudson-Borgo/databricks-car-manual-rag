@@ -21,7 +21,7 @@ enough evidence.
 
 ## Databricks architecture
 
-The implementation will use current Databricks concepts and names:
+The implementation uses current Databricks concepts and names:
 
 - **Unity Catalog** for governed data objects.
 - A **Unity Catalog volume** for the source PDFs.
@@ -29,7 +29,8 @@ The implementation will use current Databricks concepts and names:
 - **Databricks AI Search** (formerly Vector Search) for hybrid retrieval.
 - A hosted embedding model and foundation model available in the workspace.
 - **MLflow** for tracing, evaluation, and lifecycle management.
-- **Model Serving** for deployment when supported by the Free Edition workspace.
+- A **Foundation Model API** endpoint for generation; a dedicated custom Model
+  Serving endpoint is documented as a production extension.
 - A Databricks **Git folder** connected to this GitHub repository.
 
 The initial Unity Catalog namespace is:
@@ -60,8 +61,16 @@ We do not advance until the current checkpoint is confirmed.
 | 3. Retrieval | Create and test an AI Search index | Retrieval, embeddings, and reranking |
 | 4. RAG chain | Build prompts, retrieval flow, citations, and guardrails | Application Development |
 | 5. Evaluation | Create an evaluation set and use MLflow tracing/scorers | Evaluation and Monitoring |
-| 6. Deployment | Register and serve the application where supported | Assembling and Deploying Applications |
-| 7. Operations | Inspect inference data, cost, safety, and feedback | Monitoring and Governance |
+| 6. Operations | Validate governed data, serving readiness, and recent traces | Deployment, Monitoring, and Governance |
+
+## Completed baseline
+
+The hands-on baseline is complete through `07_operational_validation.py`. It
+uses two governed manuals, 2,313 section-aware chunks, a Delta Sync AI Search
+index, metadata-filtered hybrid retrieval, a Databricks Foundation Model API,
+MLflow tracing, and trace-based evaluation. A dedicated custom serving endpoint
+is intentionally left as a production extension so the Free Edition project
+stays small and focused on the certification's core concepts.
 
 ## Repository layout
 

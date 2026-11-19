@@ -58,6 +58,12 @@ outputs. The baseline evaluation stores selected traces in
 `workspace.car_manual_rag.rag_evaluation_dataset` and applies MLflow RAG judges
 plus project-specific citation and actionability guidelines.
 
+Notebook 07 is the operational completion gate. It checks the Unity Catalog
+chunk table and Change Data Feed property, the online AI Search index, the
+Foundation Model API endpoint, and evaluation-compatible MLflow traces. The
+project does not deploy a separate custom model endpoint; that remains a
+production extension beyond this small Free Edition learning baseline.
+
 ## Free Edition design constraint
 
 The design must be validated against the current Free Edition documentation at

@@ -1,7 +1,6 @@
 # Databricks notebooks
 
-Notebooks will be added one checkpoint at a time in Databricks source `.py`
-format. Planned sequence:
+The completed learning sequence is stored in Databricks source `.py` format:
 
 1. `00_environment_check.py`
 2. `01_ingest_pdf.py`
@@ -10,7 +9,7 @@ format. Planned sequence:
 5. `04_create_vector_index.py`
 6. `05_build_rag_chain.py` (includes retrieval testing)
 7. `06_evaluate_rag.py`
-8. `07_deploy_and_monitor.py`
+8. `07_operational_validation.py`
 
 Each notebook must state its learning objective, expected inputs, expected
 outputs, validation checks, and related exam objectives.
