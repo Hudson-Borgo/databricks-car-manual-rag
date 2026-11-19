@@ -53,6 +53,11 @@ grounded prompt with vehicle and PDF-page provenance, queries the
 `databricks-qwen3-next-80b-a3b-instruct` Foundation Model API endpoint, and
 captures retrieval and generation traces in MLflow.
 
+The retriever records MLflow `RETRIEVER` spans with structured `Document`
+outputs. The baseline evaluation stores selected traces in
+`workspace.car_manual_rag.rag_evaluation_dataset` and applies MLflow RAG judges
+plus project-specific citation and actionability guidelines.
+
 ## Free Edition design constraint
 
 The design must be validated against the current Free Edition documentation at

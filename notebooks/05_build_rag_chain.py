@@ -39,6 +39,7 @@ import mlflow
 from databricks.ai_search.client import AISearchClient
 from databricks.sdk import WorkspaceClient
 from databricks_openai import DatabricksOpenAI
+from mlflow.entities import Document, SpanType
 
 SEARCH_ENDPOINT = "car_manual_rag_endpoint"
 SEARCH_INDEX = "workspace.car_manual_rag.car_manual_chunks_index"
@@ -115,7 +116,7 @@ def search_result_rows(results):
     ]
 
 
-@mlflow.trace(name="retrieve_chunks")
+@mlflow.trace(name="retrieve_chunks", span_type=SpanType.RETRIEVER)
 def retrieve(
     question: str,
     vehicle: str,
@@ -155,6 +156,28 @@ def retrieve(
         chunk["document_id"] == DOCUMENTS[vehicle]
         for chunk in chunks
     ), "The retriever returned a chunk from the wrong vehicle."
+
+    retrieval_documents = [
+        Document(
+            id=str(chunk["chunk_id"]),
+            page_content=chunk["chunk_text"],
+            metadata={
+                "doc_uri": (
+                    f"{chunk['document_id']}"
+                    f"#pdf-pages={chunk['pdf_page_numbers']}"
+                ),
+                "chunk_id": str(chunk["chunk_id"]),
+                "document_id": chunk["document_id"],
+                "manufacturer": chunk["manufacturer"],
+                "model": chunk["model"],
+                "model_year": chunk["model_year"],
+                "section_title": chunk.get("section_title"),
+                "pdf_page_numbers": chunk["pdf_page_numbers"],
+            },
+        )
+        for chunk in chunks
+    ]
+    mlflow.get_current_active_span().set_outputs(retrieval_documents)
 
     return chunks
 
@@ -291,7 +314,7 @@ Rules:
 """.strip()
 
 
-@mlflow.trace(name="rag_chain")
+@mlflow.trace(name="rag_chain", span_type=SpanType.CHAIN)
 def ask_manual(question: str, vehicle: str):
     """Retrieve evidence, augment the prompt, and generate a cited answer."""
     chunks = retrieve(question, vehicle, query_type="hybrid", k=5)
