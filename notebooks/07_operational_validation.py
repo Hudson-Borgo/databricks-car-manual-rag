@@ -41,8 +41,10 @@ CHUNK_TABLE = f"{CATALOG}.{SCHEMA}.document_chunks"
 SEARCH_ENDPOINT = "car_manual_rag_endpoint"
 SEARCH_INDEX = f"{CATALOG}.{SCHEMA}.car_manual_chunks_index"
 LLM_MODEL = "databricks-qwen3-next-80b-a3b-instruct"
+MLFLOW_EXPERIMENT = "/Users/hudsonborgo98@gmail.com/car-manual-llm"
 
 mlflow.set_tracking_uri("databricks")
+mlflow.set_experiment(MLFLOW_EXPERIMENT)
 
 # COMMAND ----------
 # MAGIC %md

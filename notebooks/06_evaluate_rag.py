@@ -44,9 +44,11 @@ from mlflow.genai.scorers import (
 )
 
 EVALUATION_DATASET = "workspace.car_manual_rag.rag_evaluation_dataset"
+MLFLOW_EXPERIMENT = "/Users/hudsonborgo98@gmail.com/car-manual-llm"
 EXPECTED_TRACE_COUNT = 2
 
 mlflow.set_tracking_uri("databricks")
+mlflow.set_experiment(MLFLOW_EXPERIMENT)
 
 # COMMAND ----------
 # MAGIC %md

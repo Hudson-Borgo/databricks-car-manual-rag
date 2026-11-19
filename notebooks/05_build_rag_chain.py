@@ -44,6 +44,7 @@ from mlflow.entities import Document, SpanType
 SEARCH_ENDPOINT = "car_manual_rag_endpoint"
 SEARCH_INDEX = "workspace.car_manual_rag.car_manual_chunks_index"
 LLM_MODEL = "databricks-qwen3-next-80b-a3b-instruct"
+MLFLOW_EXPERIMENT = "/Users/hudsonborgo98@gmail.com/car-manual-llm"
 
 DOCUMENTS = {
     "peugeot": "peugeot_208_2023_pt_br",
@@ -90,6 +91,7 @@ search_index = search_client.get_index(
 )
 
 mlflow.set_tracking_uri("databricks")
+mlflow.set_experiment(MLFLOW_EXPERIMENT)
 mlflow.openai.autolog()
 llm_client = DatabricksOpenAI()
 
