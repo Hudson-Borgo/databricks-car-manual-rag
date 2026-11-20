@@ -71,7 +71,21 @@ latest_traces = mlflow.search_traces(
     sql_warehouse_id=SQL_WAREHOUSE_ID,
 )
 
-assert len(latest_traces) == EXPECTED_TRACE_COUNT, (
+latest_trace_records = mlflow.search_traces(
+    filter_string=(
+        "attributes.status = 'OK' AND "
+        "tags.`mlflow.traceName` = 'rag_chain'"
+    ),
+    order_by=["attributes.timestamp_ms DESC"],
+    max_results=EXPECTED_TRACE_COUNT,
+    return_type="pandas",
+    sql_warehouse_id=SQL_WAREHOUSE_ID,
+)
+
+assert (
+    len(latest_traces) == EXPECTED_TRACE_COUNT
+    and len(latest_trace_records) == EXPECTED_TRACE_COUNT
+), (
     "Expected two recent rag_chain traces. Pull the latest repository changes "
     "and rerun Notebook 05 before continuing."
 )
@@ -148,7 +162,7 @@ except Exception:
     evaluation_dataset = create_dataset(name=EVALUATION_DATASET)
     dataset_action = "created"
 
-evaluation_dataset = evaluation_dataset.merge_records(latest_traces)
+evaluation_dataset = evaluation_dataset.merge_records(latest_trace_records)
 evaluation_records = evaluation_dataset.to_df()
 
 print(f"Dataset action: {dataset_action}")
