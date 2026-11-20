@@ -67,7 +67,10 @@ production extension beyond this small Free Edition learning baseline.
 The user-facing layer is a FastAPI Databricks App. It exposes a browser chat and
 an authenticated `POST /api/ask` endpoint, uses the App's dedicated service
 principal, and binds only the AI Search index, Foundation Model endpoint, and
-MLflow experiment permissions required by the RAG request path.
+MLflow experiment permissions required by the RAG request path. Because the
+experiment persists traces in Unity Catalog, the App identity also has
+`SELECT` and `MODIFY` on its span and annotation tables; it has no access to
+other project tables beyond the AI Search index binding.
 
 ## Free Edition design constraint
 

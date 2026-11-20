@@ -22,5 +22,9 @@ The Databricks App binds these least-privilege resources:
 - `model`: `CAN_QUERY` on the Foundation Model API endpoint.
 - `experiment`: `CAN_EDIT` on the MLflow experiment.
 
+Because this experiment stores traces in Unity Catalog tables, run
+`grants.sql` once after creating the App. It grants the App service principal
+`SELECT` and `MODIFY` only on the experiment's span and annotation tables.
+
 Authentication uses the service principal created automatically for the App.
 No user token or secret is stored in this repository.
