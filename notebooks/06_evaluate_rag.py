@@ -45,6 +45,7 @@ from mlflow.genai.scorers import (
 
 EVALUATION_DATASET = "workspace.car_manual_rag.rag_evaluation_dataset"
 MLFLOW_EXPERIMENT = "/Users/hudsonborgo98@gmail.com/car-manual-llm"
+SQL_WAREHOUSE_ID = "70f95fb018f9f1d4"
 EXPECTED_TRACE_COUNT = 2
 
 mlflow.set_tracking_uri("databricks")
@@ -67,6 +68,7 @@ latest_traces = mlflow.search_traces(
     order_by=["attributes.timestamp_ms DESC"],
     max_results=EXPECTED_TRACE_COUNT,
     return_type="list",
+    sql_warehouse_id=SQL_WAREHOUSE_ID,
 )
 
 assert len(latest_traces) == EXPECTED_TRACE_COUNT, (

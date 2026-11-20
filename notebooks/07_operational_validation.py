@@ -42,6 +42,7 @@ SEARCH_ENDPOINT = "car_manual_rag_endpoint"
 SEARCH_INDEX = f"{CATALOG}.{SCHEMA}.car_manual_chunks_index"
 LLM_MODEL = "databricks-qwen3-next-80b-a3b-instruct"
 MLFLOW_EXPERIMENT = "/Users/hudsonborgo98@gmail.com/car-manual-llm"
+SQL_WAREHOUSE_ID = "70f95fb018f9f1d4"
 
 mlflow.set_tracking_uri("databricks")
 mlflow.set_experiment(MLFLOW_EXPERIMENT)
@@ -92,6 +93,7 @@ recent_traces = mlflow.search_traces(
     order_by=["attributes.timestamp_ms DESC"],
     max_results=2,
     return_type="list",
+    sql_warehouse_id=SQL_WAREHOUSE_ID,
 )
 
 traces_have_retrieval = all(
