@@ -64,6 +64,11 @@ Foundation Model API endpoint, and evaluation-compatible MLflow traces. The
 project does not deploy a separate custom model endpoint; that remains a
 production extension beyond this small Free Edition learning baseline.
 
+The user-facing layer is a FastAPI Databricks App. It exposes a browser chat and
+an authenticated `POST /api/ask` endpoint, uses the App's dedicated service
+principal, and binds only the AI Search index, Foundation Model endpoint, and
+MLflow experiment permissions required by the RAG request path.
+
 ## Free Edition design constraint
 
 The design must be validated against the current Free Edition documentation at

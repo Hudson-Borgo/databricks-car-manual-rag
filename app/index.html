@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Car Manual RAG</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #08111f;
+        --panel: #101c2f;
+        --panel-2: #15243b;
+        --line: #2b3d58;
+        --text: #eef4ff;
+        --muted: #a9b8cc;
+        --brand: #ff5f46;
+        --brand-2: #ff8b68;
+        --user: #203a5f;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at 15% 0%, #173257 0, transparent 34rem),
+          var(--bg);
+      }
+      .shell { width: min(980px, 100%); margin: 0 auto; padding: 28px 20px 40px; }
+      header { display: flex; gap: 16px; align-items: center; margin-bottom: 22px; }
+      .mark {
+        width: 48px; height: 48px; display: grid; place-items: center;
+        border-radius: 15px; font-size: 24px;
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        box-shadow: 0 12px 35px #ff5f4638;
+      }
+      h1 { margin: 0; font-size: clamp(1.45rem, 3vw, 2.2rem); }
+      header p { margin: 4px 0 0; color: var(--muted); }
+      .toolbar {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 14px; padding: 14px 16px; border: 1px solid var(--line);
+        background: #101c2fdd; border-radius: 16px 16px 0 0;
+      }
+      label { color: var(--muted); font-size: .88rem; }
+      select, button, textarea { font: inherit; }
+      select {
+        margin-left: 8px; padding: 8px 34px 8px 10px; color: var(--text);
+        border: 1px solid var(--line); border-radius: 9px; background: var(--panel-2);
+      }
+      .clear {
+        padding: 8px 12px; border: 1px solid var(--line); border-radius: 9px;
+        color: var(--muted); background: transparent; cursor: pointer;
+      }
+      .chat {
+        min-height: 430px; max-height: 62vh; overflow-y: auto;
+        padding: 22px; border-left: 1px solid var(--line);
+        border-right: 1px solid var(--line); background: #0d1829cc;
+      }
+      .welcome { max-width: 640px; margin: 68px auto; text-align: center; }
+      .welcome h2 { margin-bottom: 8px; }
+      .welcome p { color: var(--muted); line-height: 1.6; }
+      .examples { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+      .example {
+        padding: 8px 11px; color: var(--text); background: var(--panel-2);
+        border: 1px solid var(--line); border-radius: 999px; cursor: pointer;
+      }
+      .message { display: flex; margin: 0 0 18px; }
+      .bubble {
+        max-width: 82%; padding: 13px 15px; line-height: 1.55;
+        border: 1px solid var(--line); border-radius: 14px; white-space: pre-wrap;
+      }
+      .message.user { justify-content: flex-end; }
+      .user .bubble { background: var(--user); border-bottom-right-radius: 4px; }
+      .assistant .bubble { background: var(--panel); border-bottom-left-radius: 4px; }
+      details { margin-top: 12px; color: var(--muted); font-size: .9rem; }
+      details article { margin: 9px 0; padding: 10px; border-left: 2px solid var(--brand); }
+      details strong { color: var(--text); }
+      .trace { margin-top: 9px; font: .75rem ui-monospace, monospace; color: #7f91aa; }
+      .composer {
+        display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 14px;
+        border: 1px solid var(--line); border-radius: 0 0 16px 16px;
+        background: var(--panel);
+      }
+      textarea {
+        resize: none; min-height: 48px; max-height: 130px; padding: 12px;
+        color: var(--text); background: #0b1524; border: 1px solid var(--line);
+        border-radius: 11px; outline: none;
+      }
+      textarea:focus { border-color: var(--brand); }
+      .send {
+        align-self: stretch; min-width: 88px; border: 0; border-radius: 11px;
+        font-weight: 700; color: white; cursor: pointer;
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      }
+      .send:disabled { opacity: .55; cursor: wait; }
+      footer { margin-top: 12px; text-align: center; color: #7f91aa; font-size: .78rem; }
+      @media (max-width: 620px) {
+        .shell { padding: 18px 10px 28px; }
+        .toolbar { align-items: flex-start; }
+        .chat { min-height: 55vh; padding: 14px; }
+        .bubble { max-width: 94%; }
+        .composer { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <div class="mark">🚘</div>
+        <div>
+          <h1>Car Manual RAG</h1>
+          <p>Respostas fundamentadas nos manuais, com páginas e seções.</p>
+        </div>
+      </header>
+
+      <section class="toolbar">
+        <label>Veículo
+          <select id="vehicle">
+            <option value="peugeot">Peugeot 208 2023</option>
+            <option value="hyundai">Hyundai HB20 2022</option>
+          </select>
+        </label>
+        <button class="clear" id="clear" type="button">Limpar conversa</button>
+      </section>
+
+      <section class="chat" id="chat">
+        <div class="welcome" id="welcome">
+          <h2>O que você quer consultar?</h2>
+          <p>Escolha o veículo e pergunte sobre luzes, manutenção, equipamentos ou procedimentos do manual.</p>
+          <div class="examples">
+            <button class="example">O que fazer se a luz de temperatura acender?</button>
+            <button class="example">Como verificar o nível do óleo?</button>
+            <button class="example">Como trocar um pneu?</button>
+          </div>
+        </div>
+      </section>
+
+      <form class="composer" id="form">
+        <textarea id="question" maxlength="1000" placeholder="Digite sua pergunta sobre o veículo..." required></textarea>
+        <button class="send" id="send" type="submit">Perguntar</button>
+      </form>
+      <footer>Use as respostas como orientação do manual. Em situações de risco, procure assistência qualificada.</footer>
+    </main>
+
+    <script>
+      const chat = document.querySelector('#chat');
+      const welcome = document.querySelector('#welcome');
+      const form = document.querySelector('#form');
+      const question = document.querySelector('#question');
+      const vehicle = document.querySelector('#vehicle');
+      const send = document.querySelector('#send');
+
+      function escapeHtml(value) {
+        const div = document.createElement('div');
+        div.textContent = String(value ?? '');
+        return div.innerHTML;
+      }
+
+      function addMessage(role, text, sources = [], traceId = null) {
+        welcome?.remove();
+        const row = document.createElement('div');
+        row.className = `message ${role}`;
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.textContent = text;
+
+        if (sources.length) {
+          const details = document.createElement('details');
+          const summary = document.createElement('summary');
+          summary.textContent = `${sources.length} fontes recuperadas`;
+          details.appendChild(summary);
+          sources.forEach(source => {
+            const article = document.createElement('article');
+            article.innerHTML = `<strong>[Source ${source.number}] ${escapeHtml(source.section_title || 'Seção não identificada')}</strong><br>` +
+              `Páginas PDF: ${escapeHtml(JSON.stringify(source.pdf_page_numbers))}<br>` +
+              `${escapeHtml(source.text_preview)}`;
+            details.appendChild(article);
+          });
+          bubble.appendChild(details);
+        }
+
+        if (traceId) {
+          const trace = document.createElement('div');
+          trace.className = 'trace';
+          trace.textContent = `MLflow trace: ${traceId}`;
+          bubble.appendChild(trace);
+        }
+
+        row.appendChild(bubble);
+        chat.appendChild(row);
+        chat.scrollTop = chat.scrollHeight;
+      }
+
+      async function submitQuestion(text) {
+        const clean = text.trim();
+        if (clean.length < 3) return;
+        addMessage('user', clean);
+        question.value = '';
+        send.disabled = true;
+        send.textContent = 'Buscando…';
+
+        try {
+          const response = await fetch('api/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vehicle: vehicle.value, question: clean })
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.detail || 'Falha ao consultar o manual.');
+          addMessage('assistant', data.answer, data.sources, data.trace_id);
+        } catch (error) {
+          addMessage('assistant', `Não foi possível responder: ${error.message}`);
+        } finally {
+          send.disabled = false;
+          send.textContent = 'Perguntar';
+          question.focus();
+        }
+      }
+
+      form.addEventListener('submit', event => {
+        event.preventDefault();
+        submitQuestion(question.value);
+      });
+      question.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          form.requestSubmit();
+        }
+      });
+      document.querySelectorAll('.example').forEach(button => {
+        button.addEventListener('click', () => submitQuestion(button.textContent));
+      });
+      document.querySelector('#clear').addEventListener('click', () => window.location.reload());
+    </script>
+  </body>
+</html>

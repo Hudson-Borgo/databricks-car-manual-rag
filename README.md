@@ -32,6 +32,8 @@ The implementation uses current Databricks concepts and names:
 - A **Foundation Model API** endpoint for generation; a dedicated custom Model
   Serving endpoint is documented as a production extension.
 - A Databricks **Git folder** connected to this GitHub repository.
+- A **Databricks App** exposing a browser chat and authenticated `/api/ask`
+  endpoint over the validated RAG chain.
 
 The initial Unity Catalog namespace is:
 
@@ -68,15 +70,17 @@ We do not advance until the current checkpoint is confirmed.
 The hands-on baseline is complete through `07_operational_validation.py`. It
 uses two governed manuals, 2,313 section-aware chunks, a Delta Sync AI Search
 index, metadata-filtered hybrid retrieval, a Databricks Foundation Model API,
-MLflow tracing, and trace-based evaluation. A dedicated custom serving endpoint
-is intentionally left as a production extension so the Free Edition project
-stays small and focused on the certification's core concepts.
+MLflow tracing, trace-based evaluation, and a Databricks App with a chat UI and
+JSON API. The App uses its own least-privilege service principal; a dedicated
+custom model endpoint is unnecessary because the App orchestrates the existing
+AI Search and Foundation Model endpoints.
 
 ## Repository layout
 
 ```text
 docs/                   Architecture, decisions, and exam mapping
 notebooks/              Numbered Databricks source notebooks
+app/                    FastAPI Databricks App, browser UI, and deployment config
 src/car_manual_rag/     Reusable Python modules added as the project develops
 tests/                  Local component tests
 data/                   Documentation only; source PDFs are ignored by Git

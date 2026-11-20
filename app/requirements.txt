@@ -1,0 +1,5 @@
+databricks-ai-search>=0.83
+databricks-openai
+fastapi>=0.115,<1
+mlflow[databricks]>=3.10,<4
+uvicorn[standard]>=0.34,<1

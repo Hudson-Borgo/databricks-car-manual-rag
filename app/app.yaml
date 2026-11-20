@@ -1,0 +1,13 @@
+command: ['uvicorn', 'app:app']
+
+health_check:
+  path: '/health'
+  timeout_seconds: 120
+
+env:
+  - name: 'VECTOR_SEARCH_INDEX'
+    valueFrom: 'vector-search-index'
+  - name: 'SERVING_ENDPOINT'
+    valueFrom: 'model'
+  - name: 'MLFLOW_EXPERIMENT_ID'
+    valueFrom: 'experiment'
